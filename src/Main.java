@@ -27,6 +27,7 @@ public class Main {
         try {
             Socket socket = new Socket(ipAddress, port);
             OutputStream outputStream = socket.getOutputStream();
+            PrintWriter writer = new PrintWriter(new FileWriter("camera_statistics.txt"));
 
             String request = "GET /axis-cgi/mjpg/video.cgi HTTP/1.0\r\n";
             request += "\r\n";
@@ -35,6 +36,7 @@ public class Main {
             byte[] buffer = new byte[1024];
             int bytesRead;
             boolean headerSkipped = false;
+            long lastMilis = System.currentTimeMillis();
 
             while (canContinue && (bytesRead = socket.getInputStream().read(buffer)) != -1) {
                 if (!headerSkipped) {
@@ -61,7 +63,13 @@ public class Main {
                 minThroughput = Math.min(minThroughput, (long) throughput);
 
                 processReceivedData(buffer, bytesRead);
+
+                if(lastMilis != currentTime)
+                    writer.println(throughput + ";" + currentTime);
+                lastMilis = currentTime;
             }
+
+            writer.close();
 
             long endTime = System.currentTimeMillis();
             long duration = endTime - startTime;
@@ -93,10 +101,6 @@ public class Main {
             }
         });
         userInputThread.start();
-    }
-
-    private static String base64Encode(String text) {
-        return java.util.Base64.getEncoder().encodeToString(text.getBytes());
     }
 
     private static void processReceivedData(byte[] data, int length) {
